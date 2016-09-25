@@ -20,7 +20,7 @@ int ppbuf_insert_active(ppbuf_t *p, void *data, int size){
 		} else {
 			/* take the current position */
 			int mem_position = ((p->ping) * p->buffer_size) + p->put_index;
-			ptr = (unsigned char *)data;
+			ptr = (unsigned char *)p->buffer_data;
 
 			/* copy the contents */
 			memcpy(&ptr[mem_position], data, size);
@@ -50,7 +50,7 @@ int ppbuf_remove_inactive(ppbuf_t *p, void *data, int size){
 		} else {
 			/* take the current position */
 			int mem_position = ((p->pong) * p->buffer_size) + p->get_index;
-			ptr = (unsigned char *)data;
+			ptr = (unsigned char *)p->buffer_data;
 
 			/* copy the contents */
 			memcpy(data,&ptr[mem_position], size);
@@ -67,7 +67,7 @@ int ppbuf_remove_inactive(ppbuf_t *p, void *data, int size){
 
 }
 
-unsigned char *ppbuf_dma_get_active_addr(ppbuf_t* p, int *size, bool **full_signal){
+unsigned char *ppbuf_dma_get_active_addr(ppbuf_t* p, int *size){
 	if(p == NULL || size == NULL) {
 		/* no valid parameters return a invalid pointer */
 		return(NULL);
@@ -107,6 +107,9 @@ int ppbuf_dma_force_swap(ppbuf_t* p) {
 			p->ping = p->ping ^ p->pong;
 			p->pong = p->pong ^ p->ping;
 			p->ping = p->ping ^ p->pong;
+
+			p->get_index = 0;
+			p->put_index = 0;
 		}
 
 	}
@@ -117,7 +120,7 @@ bool ppbuf_get_full_signal(ppbuf_t *p, bool consume) {
 	/* take the last signaled full occurrence */
 	bool ret = (p != NULL ? p->full_signal : false);
 
-	if((consume != false) && (p != NULL)) {
+	if((consume != false) && (p != NULL) && (ret != false)) {
 		p->full_signal = false;
 
 		/* swap the buffer switches */
@@ -125,6 +128,9 @@ bool ppbuf_get_full_signal(ppbuf_t *p, bool consume) {
 		p->pong = p->pong ^ p->ping;
 		p->ping = p->ping ^ p->pong;
 
+		/* resets the buffer position */
+		p->get_index = 0;
+		p->put_index = 0;
 	}
 
 	return(ret);
